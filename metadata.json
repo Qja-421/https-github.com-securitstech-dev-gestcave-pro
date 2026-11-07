@@ -1,0 +1,6 @@
+{
+  "name": "GitHub Project Workspace",
+  "description": "Espace de travail et développement pour importer, exécuter et améliorer votre projet GitHub.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
