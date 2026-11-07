@@ -24,6 +24,8 @@ const GestionEtablissement = lazy(() => import('./modules/GestionEtablissement')
 const ModuleDebug = lazy(() => import('./modules/ModuleDebug'));
 const IAIntelligence = lazy(() => import('./modules/IAIntelligence'));
 const ModeHybride = lazy(() => import('./modules/ModeHybride'));
+const GrandLivre = lazy(() => import('./modules/GrandLivre'));
+const ModuleSecuriteAdmin = lazy(() => import('./modules/ModuleSecuriteAdmin'));
 
 const TableauClient = () => {
   const { profil, chargement, etablissementSimuleId } = useAuthStore();
@@ -53,7 +55,8 @@ const TableauClient = () => {
   }, [location]);
 
   useEffect(() => {
-    const etablissementId = etablissementSimuleId || profil?.etablissement_id;
+    // Audit de Sécurité: multi-tenant strict isolation
+    const etablissementId = (profil?.role === 'super_admin' && etablissementSimuleId) ? etablissementSimuleId : profil?.etablissement_id;
     if (!etablissementId) {
       setIsSolo(false);
       return;
@@ -108,6 +111,8 @@ const TableauClient = () => {
 
     switch (activeTab) {
       case 'dashboard': return <DashboardAccueil isSolo={isSolo} />;
+      case 'comptabilite': return <GrandLivre />;
+      case 'securite-audit': return <ModuleSecuriteAdmin />;
       case 'caisse-express': return <CaisseExpress />;
       case 'stocks': return <GestionStocks />;
       case 'achats': return <GestionAchats />;

@@ -4,11 +4,13 @@ import {
   Copy, Info, ShieldCheck, Wallet, 
   Briefcase, Activity, X, ChevronRight, Check,
   Sparkles, ShieldAlert, Fingerprint, Search, MoreHorizontal,
-  Calendar, CreditCard, ArrowRight, UserCheck, Shield, History as HistoryIcon
+  Calendar, CreditCard, ArrowRight, UserCheck, Shield, History as HistoryIcon,
+  Eye, EyeOff
 } from 'lucide-react';
 import { db } from '../../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { useAuthStore } from '../../store/authStore';
+import { enregistrerAuditLog } from '../../lib/auditLogger';
 import toast from 'react-hot-toast';
 
 interface Employe {
@@ -37,10 +39,11 @@ interface Avance {
 
 const GestionEmployes = () => {
   const { profil, etablissementSimuleId } = useAuthStore();
-  const etablissementId = etablissementSimuleId || profil?.etablissement_id;
+  const etablissementId = (profil?.role === 'super_admin' && etablissementSimuleId) ? etablissementSimuleId : profil?.etablissement_id;
   const [employes, setEmployes] = useState<Employe[]>([]);
   const [avances, setAvances] = useState<Avance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pinsVisibles, setPinsVisibles] = useState<Record<string, boolean>>({});
   
   const [nouveauNom, setNouveauNom] = useState('');
   const [nouveauRole, setNouveauRole] = useState<'serveur' | 'caissier' | 'cuisine' | 'gerant' | 'livreur' | 'securite' | 'admin' | 'agent_nettoyage'>('serveur');
@@ -357,9 +360,37 @@ const GestionEmployes = () => {
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 text-slate-400">
                            <Fingerprint size={14} />
-                           <span className="text-xs font-bold text-[#1E3A8A] tracking-[0.2em]">{emp.pin}</span>
+                           <span className="text-xs font-bold text-[#1E3A8A] tracking-[0.2em]">
+                             {pinsVisibles[emp.id] ? emp.pin : '••••'}
+                           </span>
                         </div>
-                        <button onClick={() => copierPIN(emp.pin, emp.nom)} className="p-2.5 bg-slate-50 text-slate-300 hover:text-[#1E3A8A] hover:bg-blue-50 rounded-xl transition-all"><Copy size={16} /></button>
+                        <button 
+                          onClick={() => {
+                            const isRevealed = pinsVisibles[emp.id];
+                            if (isRevealed) {
+                              setPinsVisibles(prev => ({ ...prev, [emp.id]: false }));
+                            } else {
+                              setPinsVisibles(prev => ({ ...prev, [emp.id]: true }));
+                              toast.success("PIN affiché (10s)");
+                              enregistrerAuditLog({
+                                etablissement_id: etablissementId || '',
+                                auteur_id: profil?.id || 'admin',
+                                auteur_nom: profil?.nom || 'Gérant',
+                                auteur_role: profil?.role || 'client_admin',
+                                type_action: 'MODIFICATION_PIN',
+                                niveau: 'avertissement',
+                                description: `Consultation de sécurité du code PIN de l'employé ${emp.nom}.`
+                              });
+                              setTimeout(() => {
+                                setPinsVisibles(prev => ({ ...prev, [emp.id]: false }));
+                              }, 10000);
+                            }
+                          }} 
+                          className="p-2.5 bg-slate-50 text-slate-400 hover:text-[#1E3A8A] hover:bg-blue-50 rounded-xl transition-all"
+                          title={pinsVisibles[emp.id] ? "Masquer le PIN" : "Révéler temporairement (10s)"}
+                        >
+                          {pinsVisibles[emp.id] ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
                     </div>
                 </div>
 

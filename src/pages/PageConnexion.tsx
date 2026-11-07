@@ -4,14 +4,16 @@ import { useAuthStore } from '../store/authStore';
 import { 
   Shield, Mail, Lock, ArrowRight, 
   Zap, ChevronLeft, AlertCircle, Loader2,
-  Sparkles, ShieldCheck
+  Sparkles, ShieldCheck, KeyRound, Trash2, CheckCircle2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { purgerEtReinitialiserTout } from '../lib/nettoyageEtReinitialisation';
 
 const PageConnexion = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [purging, setPurging] = useState(false);
   const { connexion } = useAuthStore();
   const navigate = useNavigate();
 
@@ -27,6 +29,24 @@ const PageConnexion = () => {
       toast.error(error.message || "Identifiants invalides");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const executerNettoyageComplet = async () => {
+    if (!window.confirm("⚠️ Confirmer le nettoyage complet de tous les anciens établissements et la réinitialisation de la base propre pour 'Étoile du Congo' ?")) return;
+    setPurging(true);
+    const toastId = toast.loading("Nettoyage et assainissement de la base...");
+    try {
+      const res = await purgerEtReinitialiserTout();
+      if (res.succes) {
+        toast.success(res.message, { id: toastId, duration: 5000 });
+      } else {
+        toast.error(res.message, { id: toastId });
+      }
+    } catch (e: any) {
+      toast.error(`Erreur: ${e.message}`, { id: toastId });
+    } finally {
+      setPurging(false);
     }
   };
 
@@ -140,81 +160,82 @@ const PageConnexion = () => {
               </button>
             </form>
 
-            {/* Accès Démo Version 2.0 en 1 clic */}
-            <div className="pt-6 border-t border-slate-100 space-y-3">
+            {/* Identifiants Officiels Fournis */}
+            <div className="pt-6 border-t border-slate-100 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-widest text-[#1E3A8A] flex items-center gap-1.5">
-                  <Sparkles size={14} className="text-orange-500" />
-                  Mode Version 2.0 — Accès Direct
+                  <KeyRound size={14} className="text-orange-500" />
+                  Identifiants Officiels Fournis
                 </span>
-                <span className="text-[9px] bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">
-                  1 Clic
+                <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
+                  Prêt à l'emploi
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-bold">
+
+              <div className="space-y-2.5 text-xs font-bold">
+                {/* Compte Super Admin */}
+                <div className="p-3.5 bg-purple-50/70 border border-purple-200/60 rounded-2xl flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">👑</span>
+                    <div>
+                      <div className="text-purple-950 font-black flex items-center gap-2">
+                        Super Admin SaaS
+                        <span className="text-[9px] bg-purple-200/80 text-purple-900 px-1.5 py-0.2 rounded font-mono">Securits Tech</span>
+                      </div>
+                      <div className="text-[11px] text-purple-800/80 font-mono">securitstech@gmail.com</div>
+                      <div className="text-[10px] text-purple-600 font-mono">Pass: SecuritsTech@2026!</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail('securitstech@gmail.com');
+                      setPassword('SecuritsTech@2026!');
+                      toast.success("Identifiants Super Admin renseignés !");
+                    }}
+                    className="px-3 py-1.5 bg-purple-600 text-white hover:bg-purple-700 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+                  >
+                    Remplir
+                  </button>
+                </div>
+
+                {/* Compte Admin Établissement */}
+                <div className="p-3.5 bg-blue-50/70 border border-blue-200/60 rounded-2xl flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">🏢</span>
+                    <div>
+                      <div className="text-blue-950 font-black flex items-center gap-2">
+                        Admin Gérant Direction
+                        <span className="text-[9px] bg-blue-200/80 text-blue-900 px-1.5 py-0.2 rounded font-mono">Étoile du Congo</span>
+                      </div>
+                      <div className="text-[11px] text-blue-800/80 font-mono">admin@etoileducongo.com</div>
+                      <div className="text-[10px] text-blue-600 font-mono">Pass: AdminCave@2026!</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail('admin@etoileducongo.com');
+                      setPassword('AdminCave@2026!');
+                      toast.success("Identifiants Admin Gérant renseignés !");
+                    }}
+                    className="px-3 py-1.5 bg-[#1E3A8A] text-white hover:bg-blue-800 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+                  >
+                    Remplir
+                  </button>
+                </div>
+              </div>
+
+              {/* Bouton Nettoyage des Établissements */}
+              <div className="pt-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    const { activerModeDemo } = useAuthStore.getState();
-                    activerModeDemo('client_admin', 'Gérant Étoile du Congo', 'admin');
-                    navigate('/tableau-de-bord');
-                    toast.success("Connecté en Gérant (V2.0)");
-                  }}
-                  className="p-3 bg-blue-50 hover:bg-blue-100 text-[#1E3A8A] rounded-xl flex items-center gap-2 transition-all border border-blue-100 text-left cursor-pointer"
+                  disabled={purging}
+                  onClick={executerNettoyageComplet}
+                  className="w-full py-3 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                 >
-                  <span className="text-base">🏢</span>
-                  <div>
-                    <div className="leading-tight">Gérant / Direction</div>
-                    <div className="text-[9px] text-slate-500 font-normal">Tableau de bord complet</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const { activerModeDemo } = useAuthStore.getState();
-                    activerModeDemo('super_admin', 'Super Administrateur SaaS', 'super_admin');
-                    navigate('/super-admin');
-                    toast.success("Connecté en Super Admin (V2.0)");
-                  }}
-                  className="p-3 bg-purple-50 hover:bg-purple-100 text-purple-900 rounded-xl flex items-center gap-2 transition-all border border-purple-100 text-left cursor-pointer"
-                >
-                  <span className="text-base">👑</span>
-                  <div>
-                    <div className="leading-tight">Super Admin</div>
-                    <div className="text-[9px] text-slate-500 font-normal">Multi-sites & Licences</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const { activerModeDemo } = useAuthStore.getState();
-                    activerModeDemo('employe', 'Jean-Baptiste (Serveur)', 'serveur');
-                    navigate('/serveur');
-                    toast.success("Session Serveur active");
-                  }}
-                  className="p-3 bg-orange-50 hover:bg-orange-100 text-orange-900 rounded-xl flex items-center gap-2 transition-all border border-orange-100 text-left cursor-pointer"
-                >
-                  <span className="text-base">🍽️</span>
-                  <div>
-                    <div className="leading-tight">Serveur POS</div>
-                    <div className="text-[9px] text-slate-500 font-normal">Prise de commandes</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const { activerModeDemo } = useAuthStore.getState();
-                    activerModeDemo('employe', 'Céleste (Cuisine & Bar)', 'cuisine');
-                    navigate('/cuisine');
-                    toast.success("Session Cuisine KDS active");
-                  }}
-                  className="p-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 rounded-xl flex items-center gap-2 transition-all border border-emerald-100 text-left cursor-pointer"
-                >
-                  <span className="text-base">👨‍🍳</span>
-                  <div>
-                    <div className="leading-tight">KDS Cuisine</div>
-                    <div className="text-[9px] text-slate-500 font-normal">Écran de production</div>
-                  </div>
+                  <Trash2 size={14} className={purging ? 'animate-spin' : ''} />
+                  {purging ? "Nettoyage en cours..." : "Nettoyer & Réinitialiser la Plateforme Propre"}
                 </button>
               </div>
             </div>

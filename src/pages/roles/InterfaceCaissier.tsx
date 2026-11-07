@@ -16,6 +16,7 @@ import { usePosteSession } from '../../hooks/usePosteSession';
 import { useNavigate } from 'react-router-dom';
 import type { LigneCommande } from '../../store/posStore';
 import { db } from '../../lib/firebase';
+import { enregistrerAuditLog } from '../../lib/auditLogger';
 
 
 const InterfaceCaissier = () => {
@@ -725,26 +726,43 @@ const InterfaceCaissier = () => {
             <div className="w-32 h-32 bg-rose-50 rounded-[3rem] flex items-center justify-center mx-auto mb-12 text-rose-500 shadow-inner">
               <Lock size={64} />
             </div>
-            <h2 className="text-4xl font-black text-[#1E3A8A] tracking-tighter uppercase mb-4 leading-none">Clôture Finale</h2>
-            <p className="text-slate-500 font-medium text-lg mb-8">Validez le solde de fin de journee pour liberer la caisse. La signature du caissier sera enregistree.</p>
-            <div className="grid grid-cols-2 gap-4 mb-8 text-left">
-              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Solde theorique cash</p>
-                <p className="text-xl font-black text-[#1E3A8A]">{soldeTheoriqueCloture.toLocaleString()} XAF</p>
+            <h2 className="text-4xl font-black text-[#1E3A8A] tracking-tighter uppercase mb-4 leading-none">Clôture de Caisse</h2>
+            <p className="text-slate-500 font-medium text-sm mb-6">
+              {isAdmin 
+                ? "Contrôle de fin de service gérant : vérifiez le solde théorique et comparez avec le décompte physique."
+                : "Protocole de comptage physique à l'aveugle : comptez vos billets et pièces et saisissez le montant total exact en caisse."}
+            </p>
+
+            {isAdmin ? (
+              <div className="grid grid-cols-2 gap-4 mb-8 text-left">
+                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Solde théorique cash</p>
+                  <p className="text-xl font-black text-[#1E3A8A]">{soldeTheoriqueCloture.toLocaleString()} XAF</p>
+                </div>
+                <div className="bg-orange-50 rounded-2xl p-5 border border-orange-100">
+                  <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest">Écart constaté</p>
+                  <p className={`text-xl font-black ${(Number(fondsSaisi || 0) - soldeTheoriqueCloture) < 0 ? 'text-rose-600' : 'text-[#FF7A00]'}`}>
+                    {(Number(fondsSaisi || 0) - soldeTheoriqueCloture).toLocaleString()} XAF
+                  </p>
+                </div>
               </div>
-              <div className="bg-orange-50 rounded-2xl p-5 border border-orange-100">
-                <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest">Ecart attendu</p>
-                <p className="text-xl font-black text-[#FF7A00]">{(Number(fondsSaisi || 0) - soldeTheoriqueCloture).toLocaleString()} XAF</p>
+            ) : (
+              <div className="bg-blue-50/80 p-4 rounded-2xl border border-blue-100 mb-6 text-left flex items-center gap-3">
+                <ShieldCheck size={24} className="text-[#1E3A8A] shrink-0" />
+                <p className="text-[11px] font-bold text-[#1E3A8A] leading-relaxed">
+                  Comptage physique obligatoire. Le solde théorique et l'écart seront calculés et certifiés à la validation.
+                </p>
               </div>
-            </div>
+            )}
             
-            <div className="bg-slate-50 p-12 rounded-[3rem] border border-slate-100 mb-16 shadow-inner focus-within:bg-white focus-within:border-rose-100 transition-all">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Montant Constaté (XAF)</p>
+            <div className="bg-slate-50 p-10 rounded-[3rem] border border-slate-100 mb-10 shadow-inner focus-within:bg-white focus-within:border-rose-100 transition-all">
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Montant Physique Constaté (XAF)</p>
                <input 
                 type="number"
                 value={fondsSaisi}
                 onChange={e => setFondsSaisi(e.target.value)}
-                className="w-full text-center text-7xl font-black outline-none bg-transparent text-rose-500 tracking-tighter"
+                placeholder="0"
+                className="w-full text-center text-6xl font-black outline-none bg-transparent text-rose-500 tracking-tighter"
                 autoFocus
                />
             </div>
@@ -758,12 +776,30 @@ const InterfaceCaissier = () => {
               </button>
               <button 
                 onClick={async () => {
-                  await fermerSession(Number(fondsSaisi));
+                  const montantFinal = Number(fondsSaisi || 0);
+                  const ecart = montantFinal - soldeTheoriqueCloture;
+                  
+                  await fermerSession(montantFinal);
+                  
+                  if (Math.abs(ecart) > 0) {
+                    await enregistrerAuditLog({
+                      etablissement_id: etablissementId || '',
+                      auteur_id: idEmploye || 'caissier',
+                      auteur_nom: nomEmploye || 'Caissier',
+                      auteur_role: isAdmin ? 'client_admin' : 'caissier',
+                      type_action: 'CLOTURE_CAISSE_ECART',
+                      niveau: Math.abs(ecart) > 2000 ? 'critique' : 'avertissement',
+                      description: `Clôture de caisse avec écart de ${ecart > 0 ? '+' : ''}${ecart.toLocaleString()} XAF (Théorique: ${soldeTheoriqueCloture.toLocaleString()} XAF, Constaté: ${montantFinal.toLocaleString()} XAF).`,
+                      details: { soldeTheorique: soldeTheoriqueCloture, soldeConstate: montantFinal, ecart }
+                    });
+                  }
+
                   setShowClotureModal(false);
+                  toast.success(`Session clôturée. Écart: ${ecart.toLocaleString()} XAF`);
                 }}
                 className="h-20 bg-rose-500 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs shadow-xl shadow-rose-900/20 hover:bg-rose-600 transition-all"
               >
-                Clôturer
+                Valider la Clôture
               </button>
             </div>
           </div>

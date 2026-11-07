@@ -3,7 +3,8 @@ import {
   Home, ShoppingBag, Users, Landmark, 
   Settings, ChevronLeft, ChevronRight,
   UserCheck, AlertCircle, Calendar, Target,
-  LogOut, Printer, Package, ClipboardList, Truck
+  LogOut, Printer, Package, ClipboardList, Truck,
+  BookOpen, ShieldCheck
 } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
 import { useAuthStore } from '../../store/authStore';
@@ -11,6 +12,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 const navItems = [
   { id: 'dashboard', label: 'Tableau de Bord', icon: <Home size={20} />, path: '/tableau-de-bord' },
+  { id: 'comptabilite', label: 'Comptabilité & Analytique', icon: <BookOpen size={20} className="text-blue-500" />, path: '/tableau-de-bord?tab=comptabilite' },
+  { id: 'securite-audit', label: 'Sécurité & Audit Admin', icon: <ShieldCheck size={20} className="text-emerald-500" />, path: '/tableau-de-bord?tab=securite-audit' },
   { id: 'stocks', label: 'Articles & Stocks', icon: <Package size={20} />, path: '/tableau-de-bord?tab=stocks', solo: true },
   { id: 'achats', label: 'Achats Fournisseurs', icon: <Truck size={20} />, path: '/tableau-de-bord?tab=achats', solo: true },
   { id: 'saisie-journaliere', label: 'Saisie Directe', icon: <ClipboardList size={20} />, path: '/tableau-de-bord?tab=saisie-journaliere', solo: true },

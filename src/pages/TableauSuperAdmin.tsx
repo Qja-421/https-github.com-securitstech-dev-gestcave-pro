@@ -15,6 +15,7 @@ import { collection, onSnapshot, doc, updateDoc, addDoc, query, where, orderBy, 
 import { clearFirestoreCache } from '../lib/firebase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import SimulateurTablette from './modules/SimulateurTablette';
+import { purgerEtReinitialiserTout } from '../lib/nettoyageEtReinitialisation';
 
 type Onglet = 'dashboard' | 'demandes' | 'messages' | 'paiements' | 'etablissements' | 'comptabilite' | 'maintenance' | 'laboratoire' | 'rh_interne' | 'finance_interne' | 'support' | 'caisse' | 'commerciaux';
 
@@ -474,29 +475,18 @@ const TableauSuperAdmin = () => {
   };
 
   const viderBase = async () => {
-    const confirmation = window.prompt("⚠️ ACTION CRITIQUE : Pour confirmer la suppression de TOUTE la plateforme, tapez 'PURGE' ci-dessous :");
+    const confirmation = window.prompt("⚠️ ACTION CRITIQUE : Pour confirmer la réinitialisation propre de TOUTE la plateforme et la recréation de l'Étoile du Congo, tapez 'PURGE' ci-dessous :");
     if (confirmation !== 'PURGE') return;
 
-    const collectionsAVider = [
-      'demandes_acces', 'etablissements', 'invitations', 'tables', 
-      'produits', 'commandes', 'transactions', 'paiements', 
-      'employes', 'achats', 'utilisateurs', 'sessions', 'charges_fixes'
-    ];
-    
-    const toastId = toast.loading("Purge de la base en cours...");
+    const toastId = toast.loading("Purge et assainissement complet de la base...");
     try {
-      let total = 0;
-      for (const colName of collectionsAVider) {
-        const snap = await getDocs(collection(db, colName));
-        for (const d of snap.docs) { 
-          // On ne supprime pas le compte Super Admin actuel pour ne pas être déconnecté
-          if (colName === 'utilisateurs' && d.data().role === 'super_admin') continue; 
-          await deleteDoc(d.ref); 
-          total++; 
-        }
+      const res = await purgerEtReinitialiserTout();
+      if (res.succes) {
+        toast.success(res.message, { id: toastId, duration: 4000 });
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        toast.error(res.message, { id: toastId });
       }
-      toast.success(`Plateforme réinitialisée. ${total} documents supprimés.`, { id: toastId });
-      setTimeout(() => window.location.reload(), 2000);
     } catch (error: any) { 
       toast.error(error.message, { id: toastId }); 
     }
